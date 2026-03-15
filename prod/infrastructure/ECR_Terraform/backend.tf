@@ -1,17 +1,12 @@
 terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = ">= 5.25.0"
-    }
-  }
 
   backend "s3" {
-    bucket = "aluruarumullaa2"
-    key    = "ecr/terraform.tfstate"
-    region = "us-east-1"
+
+    bucket         = "prodpro1"
+    key            = "global/ecr/terraform.tfstate"
+    region         = "us-east-1"
+    use_lockfile   = true
+    encrypt        = true
+
   }
-
-  required_version = ">= 1.6.3"
 }
-

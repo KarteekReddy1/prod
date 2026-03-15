@@ -112,35 +112,107 @@ resource "aws_iam_instance_profile" "worker" {
 # ----------------------------
 # VPC and Subnet Data Sources
 # ----------------------------
-data "aws_vpc" "main" {
+resource "aws_vpc" "main" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
   tags = {
     Name = "Jumphost-vpc"
   }
 }
 
-data "aws_subnet" "subnet-1" {
-  vpc_id = data.aws_vpc.main.id
-  filter {
-    name   = "tag:Name"
-    values = ["Public-Subnet-1"]
+# ----------------------------
+# Internet Gateway
+# ----------------------------
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "Jumphost-igw"
   }
 }
 
-data "aws_subnet" "subnet-2" {
-  vpc_id = data.aws_vpc.main.id
-  filter {
-    name   = "tag:Name"
-    values = ["Public-subnet2"]
+# ----------------------------
+# Public Subnets
+# ----------------------------
+resource "aws_subnet" "subnet1" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "us-east-1a"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "Public-Subnet-1"
   }
 }
 
-data "aws_security_group" "selected" {
-  vpc_id = data.aws_vpc.main.id
-  filter {
-    name   = "tag:Name"
-    values = ["Jumphost-sg"]
+resource "aws_subnet" "subnet2" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.2.0/24"
+  availability_zone       = "us-east-1b"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "Public-subnet2"
   }
 }
+
+# ----------------------------
+# Route Table for Public Subnets
+# ----------------------------
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "Public-RT"
+  }
+}
+
+resource "aws_route_table_association" "subnet1_assoc" {
+  subnet_id      = aws_subnet.subnet1.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "subnet2_assoc" {
+  subnet_id      = aws_subnet.subnet2.id
+  route_table_id = aws_route_table.public.id
+}
+
+# ----------------------------
+# Security Group
+# ----------------------------
+resource "aws_security_group" "jumphost_sg" {
+  name        = "Jumphost-sg"
+  description = "Allow SSH and EKS traffic"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    description = "Allow SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "Jumphost-sg"
+  }
+}
+
 
 # ----------------------------
 # EKS Cluster
@@ -149,10 +221,10 @@ resource "aws_eks_cluster" "eks" {
   name     = "project-eks"
   role_arn = aws_iam_role.master.arn
 
-  vpc_config {
-    subnet_ids         = [data.aws_subnet.subnet-1.id, data.aws_subnet.subnet-2.id]
-    security_group_ids = [data.aws_security_group.selected.id]
-  }
+vpc_config {
+  subnet_ids         = [aws_subnet.subnet1.id, aws_subnet.subnet2.id]
+  security_group_ids = [aws_security_group.jumphost_sg.id]
+}
 
   tags = {
     Name        = "yaswanth-eks-cluster"
@@ -175,10 +247,10 @@ resource "aws_eks_node_group" "node-grp" {
   cluster_name    = aws_eks_cluster.eks.name
   node_group_name = var.node_group_name
   node_role_arn   = aws_iam_role.worker.arn
-  subnet_ids      = [data.aws_subnet.subnet-1.id, data.aws_subnet.subnet-2.id]
+  subnet_ids      = [aws_subnet.subnet1.id, aws_subnet.subnet2.id]
   capacity_type   = "ON_DEMAND"
   disk_size       = 20
-  instance_types  = ["t2.large"]
+  instance_types  = ["t3.large"]
 
   labels = {
     env = "dev"
@@ -210,16 +282,14 @@ resource "aws_eks_node_group" "node-grp" {
 # ----------------------------
 # OIDC Provider for ServiceAccount IAM Roles
 # ----------------------------
-data "aws_eks_cluster" "eks_oidc" {
-  name = aws_eks_cluster.eks.name
-}
-
 data "tls_certificate" "oidc_thumbprint" {
-  url = data.aws_eks_cluster.eks_oidc.identity[0].oidc[0].issuer
+  url = aws_eks_cluster.eks.identity[0].oidc[0].issuer
 }
 
 resource "aws_iam_openid_connect_provider" "eks_oidc" {
   client_id_list  = ["sts.amazonaws.com"]
   thumbprint_list = [data.tls_certificate.oidc_thumbprint.certificates[0].sha1_fingerprint]
-  url             = data.aws_eks_cluster.eks_oidc.identity[0].oidc[0].issuer
+  url             = aws_eks_cluster.eks.identity[0].oidc[0].issuer
 }
+
+
