@@ -4,6 +4,7 @@ kind: Deployment
 metadata:
   name: emailservice
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: emailservice
@@ -45,7 +46,7 @@ spec:
         - name: RECOMMENDATION_SERVICE_ADDR
           value: "recommendationservice:8080"
         - name: CHECKOUT_SERVICE_ADDR
-          value: "checkoutservice:5050
+          value: "checkoutservice:5050"
         resources:
           requests:
             cpu: 100m
@@ -78,5 +79,5 @@ spec:
     app: emailservice
   ports:
   - name: grpc
-    port: 8080          # fixed to match container port
+    port: 8080
     targetPort: 8080
