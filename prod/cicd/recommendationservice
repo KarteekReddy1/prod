@@ -15,7 +15,7 @@ pipeline {
         stage("Docker Image Build") {
             steps {
                 script {
-                    dir('src/recommendationservice') {
+                    dir('mircoservices/recommendationservice') {
                         sh 'docker system prune -f'
                         sh 'docker container prune -f'
                         sh 'docker build -t recommendationservice .'
