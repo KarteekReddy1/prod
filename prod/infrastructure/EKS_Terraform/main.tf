@@ -249,7 +249,7 @@ resource "aws_eks_node_group" "node-grp" {
   node_role_arn   = aws_iam_role.worker.arn
   subnet_ids      = [aws_subnet.subnet1.id, aws_subnet.subnet2.id]
   capacity_type   = "ON_DEMAND"
-  disk_size       = 20
+  disk_size       = 30
   instance_types  = ["t3.large"]
 
   labels = {
@@ -261,9 +261,9 @@ resource "aws_eks_node_group" "node-grp" {
   }
 
   scaling_config {
-    desired_size = 3
-    max_size     = 10
-    min_size     = 2
+    desired_size = 2
+    max_size     = 5
+    min_size     = 1
   }
 
   update_config {
