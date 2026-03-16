@@ -59,6 +59,21 @@ spec:
           limits:
             cpu: 200m
             memory: 128Mi
+readinessProbe:
+  tcpSocket:
+    port: 8080
+  initialDelaySeconds: 20
+  timeoutSeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
+
+livenessProbe:
+  tcpSocket:
+    port: 8080
+  initialDelaySeconds: 30
+  timeoutSeconds: 5
+  periodSeconds: 10
+  failureThreshold: 5
         # readinessProbe:
         #   grpc:
         #     port: 8080
