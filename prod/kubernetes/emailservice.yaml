@@ -36,8 +36,14 @@ spec:
           value: "8080"
         - name: DISABLE_PROFILER
           value: "1"
-        - name: CURRENCY_SERVICE_ADDR
-          value: "productcatalogservice:3550"   # <-- added reference to Product Catalog
+        readinessProbe:
+          periodSeconds: 5
+          grpc:
+            port: 8080
+        livenessProbe:
+          periodSeconds: 5
+          grpc:
+            port: 8080
         resources:
           requests:
             cpu: 100m
@@ -45,20 +51,6 @@ spec:
           limits:
             cpu: 200m
             memory: 128Mi
-        readinessProbe:
-          grpc:
-            port: 8080
-          initialDelaySeconds: 10
-          timeoutSeconds: 2
-          periodSeconds: 5
-          failureThreshold: 3
-        livenessProbe:
-          grpc:
-            port: 8080
-          initialDelaySeconds: 10
-          timeoutSeconds: 2
-          periodSeconds: 5
-          failureThreshold: 3
 ---
 apiVersion: v1
 kind: Service
@@ -70,5 +62,5 @@ spec:
     app: emailservice
   ports:
   - name: grpc
-    port: 8080          # <-- fixed to match container port
+    port: 5000
     targetPort: 8080
