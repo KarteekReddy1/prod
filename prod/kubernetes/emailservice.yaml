@@ -46,7 +46,6 @@ spec:
           value: "recommendationservice:8080"
         - name: CHECKOUT_SERVICE_ADDR
           value: "checkoutservice:5050
-
         resources:
           requests:
             cpu: 100m
